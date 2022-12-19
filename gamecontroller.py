@@ -14,6 +14,8 @@ MIN_PLAYER = 2
 MAX_PLAYER = 6
 JAIL_FEE = 50
 GO_CREDIT = 200
+MIN_TRADE = 60
+MAX_TRADE = 400
 
 game = {"board": list(), "players": list(), "over": False}
 
@@ -220,9 +222,9 @@ def handle_player_pos(player) -> None:
     """ Handle all possible fees that player incurs depends on his/her position on the board"""
     card = game["board"][player.get_pos()]
     if type(card) in [Property, Utility, RailRoad]:
-        if card.owned_by() is not None and player.name != card.owned_by().name:  # Player is not property owner
+        rent = card.get_rent()
+        if card.owned_by() is not None and player.name != card.owned_by().name and rent != 0:  # Player is not property owner
             property_owner = card.owned_by()
-            rent = card.get_rent()
             deduct_balance(player, rent)  # Pay rent
             add_balance(property_owner, rent)  # Collect rent
             print(f"{player.name} paid {property_owner.name} ${rent} for rent!\n")
@@ -265,7 +267,7 @@ def handle_player_request(player, player_request) -> None:
     elif player_request == 5:  # Sell hotel
         pass
     elif player_request == 6:  # Mortgage
-        pass
+        handle_mortgage(player)
     elif player_request == 7:  # Buy property
         handle_buying_property(player, card)
     else:  # Place bid
@@ -282,7 +284,6 @@ def handle_buying_property(player, landed_property) -> None:
         player.buy_assets(landed_property)
         print(f"Purchase {landed_property.name} successfully!\n")
         display_player_assets(player)
-        print(landed_property)
     else:
         print("Cancel request\n")
 
@@ -292,25 +293,18 @@ def handle_trade(player) -> None:
     other_players = get_other_players(player)
     print("All players' names:")
     display_players(other_players)
-    player_name = input("Enter player's name to trade: ")
-    other_player = get_player_by_name(player_name, other_players)
-    while other_player is None:
-        print(f"{player_name} does not exist. Please try again!")
-        player_name = input("Enter player's name to trade: ")
-        other_player = get_player_by_name(player_name, other_players)
-    display_player_assets(other_player)
-    if len(other_player.get_assets()) != 0:
-        asset_category = input("Enter asset's type: ")
-        asset_name = input("Enter asset's name: ")
-        asset_to_trade = get_asset_by_name(
-            other_player, asset_category, asset_name)
-        while asset_to_trade is None:
-            asset_category = input("Enter asset's type: ")
-            asset_name = input("Enter asset's name: ")
-            asset_to_trade = get_asset_by_name(
-                other_player, asset_category, asset_name)
-        trade_value = get_int(50, 300, "trade value")
-        trade_asset(player, other_player, asset_to_trade, trade_value)
+    other_player = get_player_by_name(other_players)
+    if other_player is not None:
+        display_player_assets(other_player)
+        if len(other_player.get_assets()) != 0:
+            asset_to_trade = get_asset_from_input(other_player)
+            if (asset_to_trade is not None):
+                trade_value = get_int(MIN_TRADE, MAX_TRADE, "trade value")
+                trade_asset(player, other_player, asset_to_trade, trade_value)
+            else:
+                print(f"{player.name} cancels trade")
+    else:
+        print(f"{player.name} cancels trade")
 
 
 def get_other_players(current_player) -> list:
@@ -322,28 +316,49 @@ def get_other_players(current_player) -> list:
     return others
 
 
-def get_player_by_name(player_name, other_players) -> Player:
-    # Return the player that has player_name
-    for player in other_players:
-        if player.name == player_name:
-            return player
-    return None
+def get_player_by_name(player_list) -> Player:
+    # Return the player based on name entered
+    player_name = input("Enter player's name (Q to quit): ")
+    return_player = None
+    while player_name.upper() != "Q":
+        for player in player_list:
+            if player.name == player_name:
+                return_player = player
+                player_name = "Q"  # Exit while loop
+                break
+        if return_player is None:
+            print(f"Cannot find {player_name}. Please try again!")
+            player_name = input("Enter player's name (Q to quit): ")
+    return return_player
 
 
-def get_asset_by_name(player, asset_category, asset_name):
-    # Return asset based on name and category
-    try:
-        assets = player.get_assets()[asset_category]
-        for asset in assets:
-            if asset.name == asset_name:
-                return asset
-    except KeyError:
-        print(f"{asset_category} category does not exist")
-    return None
+def get_asset_from_input(player):
+    # Return asset based on name and category entered
+    asset_category = input("Enter asset's type (Q to cancel): ")
+    asset = None
+    while asset_category.upper() != "Q":
+        try:
+            assets = player.get_assets()[asset_category]
+            asset_name = input("Enter asset's name (Q to cancel): ")
+            if asset_name.upper() == "Q":
+                asset_category = "Q"  # Exit while loop
+            else:
+                for player_asset in assets:
+                    if player_asset.name == asset_name:
+                        asset = player_asset
+                        asset_category = "Q"  # Exit while loop
+                        break
+                if asset is None:  # Cannot find asset_name
+                    print(f"{asset_name} does not exist\n")
+        except KeyError:
+            print(f"{asset_category} category does not exist\n")
+            asset_category = input("Enter asset's type (Q to cancel): ")
+    return asset
 
 
 def trade_asset(current_player, other_player, asset_to_trade, trade_value):
-    print(f"{current_player.name} wants to trade ${trade_value} for {asset_to_trade.name}")
+    print(
+        f"\n{current_player.name} wants to trade ${trade_value} for {asset_to_trade.name}")
     response = get_response()
     if response.upper() == "Y":
         asset_category = asset_to_trade.type
@@ -353,6 +368,31 @@ def trade_asset(current_player, other_player, asset_to_trade, trade_value):
             other_player.get_balance() + trade_value)  # add balance
         current_player.set_balance(current_player.get_balance() - trade_value)
         current_player.buy_assets(asset_to_trade)
-        print("Trade successfully!")
+        print("Trade successfully!\n")
+        asset_to_trade.set_owner(current_player)  # Set new owner
+        print(asset_to_trade)
+        display_player_assets(current_player)
+        display_player_assets(other_player)
     else:
         print(f"{other_player.name} refuses  to trade.")
+
+
+def handle_mortgage(player):
+    player_assets = player.get_assets()
+    if len(player_assets) == 0:  # Player does not have any asset to mortgage
+        print(f"{player.name} does not have any properties to mortgage!")
+    else:
+        display_player_assets(player)
+        property_to_mortgage = get_asset_from_input(player)
+        while property_to_mortgage is not None and property_to_mortgage.is_mortgaged():  # Property already mortgaged
+            print(f"{property_to_mortgage.name} was already mortgaged!\n")
+            property_to_mortgage = get_asset_from_input(player)
+        if property_to_mortgage is None:  # Player cancels mortgage request
+            print(f"{player.name} cancels mortgage request")
+        else:  # Property is found and not mortgaged yet
+            property_to_mortgage.set_mortgaged()  # Set property to mortgaged
+            print(f"Sucessfully mortgage {property_to_mortgage.name}")
+            mortgage_value = property_to_mortgage.price // 2
+            add_balance(player, mortgage_value)
+            print(
+                f"{player.name} received ${mortgage_value} from mortgage {property_to_mortgage.name}\n")

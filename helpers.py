@@ -11,7 +11,7 @@ def get_int(min, max, object) -> int:
     done = False
     while not done:
         try:
-            user_int = int(input(f"\nEnter {object}: "))
+            user_int = int(input(f"Enter {object}: "))
         except ValueError:
             print("Invalid number. Please try again!")
         else:
