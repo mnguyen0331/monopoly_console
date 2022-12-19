@@ -79,7 +79,11 @@ def display_player_assets(player) -> None:
         for asset_type, assets in player_assets.items():
             print(f"{asset_type}: ", end="")
             for asset in assets:
-                print(
-                    f"[{asset.name},{asset.color},Price: ${asset.price}, Rent: ${asset.get_rent()}]", end=" ")
+                if asset_type == "Property":
+                    print(
+                        f"[{asset.name},{asset.color},Price: ${asset.price}, Rent: ${asset.get_rent()}]", end=" ")
+                else:
+                    print(
+                        f"[{asset.name},Price: ${asset.price}, Rent: ${asset.get_rent()}]", end=" ")
             print("")
         print("")

@@ -1,8 +1,8 @@
 # Author: Phu Manh Nguyen
 # Date: 12/17/2022
 
-import os
-import time
+from os import system, name
+from time import sleep
 
 # Get an integer between min and max from user
 
@@ -26,8 +26,14 @@ def get_int(min, max, object) -> int:
 
 def clean_console(second, message) -> None:
     print(message)
-    time.sleep(second)
-    os.system('cls')
+    sleep(second)
+    # for windows
+    if name == 'nt':
+        _ = system('cls')
+ 
+    # for mac and linux(here, os.name is 'posix')
+    else:
+        _ = system('clear')
 
 # Get response (Y/N) from user
 
