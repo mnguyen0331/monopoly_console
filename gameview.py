@@ -39,11 +39,11 @@ def display_start_turn(player) -> None:
 
 def display_buying_options() -> None:
     print("7. Buy property")
-    print("8. Place bid")
+    print("8. Place bid\n")
 
 
 def display_player_options() -> None:
-    print("0. End turn")
+    print("\n0. End turn")
     print("1. Build house")
     print("2. Build hotel")
     print("3. Trade")
@@ -53,13 +53,13 @@ def display_player_options() -> None:
 
 
 def display_end_turn(player) -> None:
-    print(f"{player.name}'s turn ENDs")
+    print(f"\n{player.name}'s turn ENDs")
     print(f"{player.name}'s current balance: ${player.get_balance()}")
     print("-" * LINE_LEN)
 
 
 def display_jail_options(player) -> None:
-    print(f"{player.name} are in jail. Below are {player.name}'s options to get out of jail: ")
+    print(f"\n{player.name} are in jail. Below are {player.name}'s options to get out of jail: ")
     print("-" * LINE_LEN)
     print("1. Use Get Out of Jail Card")
     print("2. Paid $50")
@@ -67,13 +67,13 @@ def display_jail_options(player) -> None:
 
 
 def display_player_landing(player, card) -> None:
-    print(f"{player.token.upper()} lands on {card.name}\n")
+    print(f"{player.token.upper()} lands on {card.name}")
 
 
 def display_player_assets(player) -> None:
     player_assets = player.get_assets()
     if len(player_assets) == 0:
-        print(f"{player.name} does not have any assets")
+        print(f"\n{player.name} does not have any assets")
     else:
         print(f"All {player.name}'s current assets:")
         for asset_type, assets in player_assets.items():
@@ -86,4 +86,3 @@ def display_player_assets(player) -> None:
                     print(
                         f"[{asset.name},Price: ${asset.price}, Rent: ${asset.get_rent()}]", end=" ")
             print("")
-        print("")

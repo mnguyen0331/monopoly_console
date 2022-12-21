@@ -38,4 +38,4 @@ class Property(Land):
             self.set_rent(self.get_rent * self.FOUR_HOUSE_MULTIFLIER)
 
     def __str__(self) -> str:
-        return f"Name: {self.name}\nColor: {self.color}\nPrice: ${self.price}\nRent: ${self.get_rent()}\nUpgrade: ${self.construction_cost}\nOwner: {self.owned_by()}\n"
+        return f"\nName: {self.name}\nColor: {self.color}\nPrice: ${self.price}\nRent: ${self.get_rent()}\nUpgrade: ${self.construction_cost}\nOwner: {self.owned_by()}\n"

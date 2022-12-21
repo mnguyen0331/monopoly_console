@@ -19,6 +19,9 @@ class Player:
     def __eq__(self, other) -> bool:
         return self.name == other.name
 
+    def get_released_card(self) -> int:
+        return self.__released_card
+    
     def get_balance(self):
         return self.__cash
 
@@ -91,6 +94,12 @@ class Player:
             asset_list = list()
             asset_list.append(asset)
             self.__assets.update({asset_category: asset_list})
+
+    def sell_assets(self, asset):
+        assets = self.__assets[asset.type]
+        assets.remove(asset)
+        if len(assets) == 0:
+            self.__assets.pop(asset.type)
 
     def mortgage_property(self, mortgaged_property):
         try:

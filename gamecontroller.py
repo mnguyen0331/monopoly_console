@@ -2,7 +2,7 @@
 # Date: 12/17/2022
 
 from property import Property
-from specials import *
+from specials import Corner, Chance, Chest, Card
 from railroad import RailRoad
 from tax import Tax
 from utility import Utility
@@ -16,6 +16,25 @@ JAIL_FEE = 50
 GO_CREDIT = 200
 MIN_TRADE = 60
 MAX_TRADE = 400
+BIRTHDATE_GIFT = 50
+INCOME_TAX_REFUND = 50
+STOCK_MATURE = 100
+DENTIST_FEE = 50
+COLLEGE_DEBT = 100
+
+CHANCES = {1: f"It's your birthdate. Everyone gives you ${BIRTHDATE_GIFT} for birthday gifts!",
+           2: f"Income tax refund. Received ${INCOME_TAX_REFUND}.",
+           3: f"Stock matures. Received ${STOCK_MATURE}",
+           4: f"Dentist Fee. Paid ${DENTIST_FEE}",
+           5: f"College Debt. Paid ${COLLEGE_DEBT}",
+           6: "Run over the red light under DUI. Go to Jail"
+           }
+
+CHESTS = {1: "Get out of jail free card",
+          2: "Rent Waiver Card",
+          3: f"Advance to GO and collect ${GO_CREDIT}",
+          4: "Building Hotel Pass. Hotel can be upgraded from three houses"
+          }
 
 game = {"board": list(), "players": list(), "over": False}
 
@@ -147,7 +166,7 @@ def move_player(player) -> None:
         set_new_pos(player, dice)
         handle_player_pos(player)
         player_request = get_player_request(player)
-        while player_request != 0:
+        while player_request != 0:  # Service player's request until turn ends
             handle_player_request(player, player_request)
             player_request = get_player_request(player)
         while player.has_rolled_doubles(dice) and not player.is_in_jail():
@@ -191,11 +210,26 @@ def handle_player_in_jail(player) -> None:
     display_jail_options(player)
     user_selection = get_int(1, 3, "selection")
     if user_selection == 1:  # Use card
-        pass
+        try:
+            jail_free_card = None
+            for card in player.get_assets()["Card"]:
+                if card.name == "Jail Free Card":
+                    jail_free_card = card
+                    break
+            if jail_free_card is None:
+                print(f"{player.name} does not have Jail Free Card")
+            else:
+                player.sell_assets(jail_free_card)
+                player.set_free()
+                print(f"{player.name} is free!")
+        except:
+            print(f"{player.name} does not have any card!")
+            handle_player_in_jail(player)
     elif user_selection == 2:  # Paid fee
         print(f"{player.name} paid ${JAIL_FEE} to get out of jail")
-        player.set_balance(player.get_balance() - JAIL_FEE)
+        deduct_balance(player, JAIL_FEE)
         player.set_free()
+        print(f"{player.name} is free!")
     else:  # Roll dice
         dice = player.roll_dice()
         if player.has_rolled_double(dice):
@@ -206,7 +240,7 @@ def handle_player_in_jail(player) -> None:
             while player_request != 0:
                 handle_player_request(player, player_request)
                 player_request = get_player_request(player)
-        else:
+        else:  # Does not roll doubles
             jail_turn_left = player.turn_left_in_jail()
             if jail_turn_left == 0:
                 print(
@@ -227,15 +261,60 @@ def handle_player_pos(player) -> None:
             property_owner = card.owned_by()
             deduct_balance(player, rent)  # Pay rent
             add_balance(property_owner, rent)  # Collect rent
+            print(card)
             print(f"{player.name} paid {property_owner.name} ${rent} for rent!\n")
     elif type(card) is Tax:
         print(card)
         print(f"{player.name} must pay ${card.get_tax_amount()}\n")
         deduct_balance(player, card.get_tax_amount())
-    elif type(card) in [Chance, Chest]:
-        pass  # Nothing for now
-    else:
+    elif type(card) is Chance:
+        action_num = card.get_action()
+        handle_chances(player, action_num)
+    elif type(card) is Chest:
+        action_num = card.get_action()
+        handle_chests(player, action_num)
+    else:  # Corner
         pass
+
+
+def handle_chances(player, action_num):
+    """ Handle all possible actions from chances """
+    print(CHANCES[action_num])
+    if action_num == 1:
+        other_players = get_other_players(player)
+        print(f"\nFor {player.name}'s birthdate,")
+        for other_player in other_players:
+            print(f"{other_player} gifted ${BIRTHDATE_GIFT}", end=". ")
+            print(
+                f"Previous balance: ${other_player.get_balance()}", end=" -> ")
+            deduct_balance(other_player, BIRTHDATE_GIFT)
+            print(f"Current balance: ${other_player.get_balance()}")
+            add_balance(player, BIRTHDATE_GIFT)
+    elif action_num == 2:
+        add_balance(player, INCOME_TAX_REFUND)
+    elif action_num == 3:
+        add_balance(player, STOCK_MATURE)
+    elif action_num == 4:
+        deduct_balance(player, DENTIST_FEE)
+    elif action_num == 5:
+        deduct_balance(player, COLLEGE_DEBT)
+    else:
+        player.set_turn_in_jail(3)
+        player.set_pos(get_card_pos("JAIL"))
+
+
+def handle_chests(player, action_num):
+    """ Handle all possible actions from chests """
+    print(CHESTS[action_num])
+    if action_num == 1:
+        player.buy_assets(Card("Jail Free Card"))
+    elif action_num == 2:
+        player.buy_assets(Card("Rent Waiver Card"))
+    elif action_num == 3:
+        player.set_pos(get_card_pos("GO"))
+        add_balance(player, GO_CREDIT)
+    else:
+        player.buy_assets(Card("Hotel Card"))
 
 
 def get_player_request(player) -> int:
@@ -249,6 +328,7 @@ def get_player_request(player) -> int:
         player_request = get_int(0, 8, "request")
     else:
         display_player_options()
+        print("")
         player_request = get_int(0, 6, "request")
     return player_request
 
@@ -275,17 +355,16 @@ def handle_player_request(player, player_request) -> None:
 
 
 def handle_buying_property(player, landed_property) -> None:
-    print()
     print(landed_property)
     response = get_response()
     if response.upper() == "Y":
         deduct_balance(player, landed_property.price)
         landed_property.set_owner(player)
         player.buy_assets(landed_property)
-        print(f"Purchase {landed_property.name} successfully!\n")
+        print(f"Purchase {landed_property.name} successfully!")
         display_player_assets(player)
     else:
-        print("Cancel request\n")
+        print("Cancel request")
 
 
 def handle_trade(player) -> None:
@@ -302,9 +381,9 @@ def handle_trade(player) -> None:
                 trade_value = get_int(MIN_TRADE, MAX_TRADE, "trade value")
                 trade_asset(player, other_player, asset_to_trade, trade_value)
             else:
-                print(f"{player.name} cancels trade")
+                print(f"\n{player.name} cancels trade")
     else:
-        print(f"{player.name} cancels trade")
+        print(f"\n{player.name} cancels trade")
 
 
 def get_other_players(current_player) -> list:
@@ -318,7 +397,7 @@ def get_other_players(current_player) -> list:
 
 def get_player_by_name(player_list) -> Player:
     # Return the player based on name entered
-    player_name = input("Enter player's name (Q to quit): ")
+    player_name = input("\nEnter player's name (Q to quit): ")
     return_player = None
     while player_name.upper() != "Q":
         for player in player_list:
@@ -359,28 +438,24 @@ def get_asset_from_input(player):
 def trade_asset(current_player, other_player, asset_to_trade, trade_value):
     print(
         f"\n{current_player.name} wants to trade ${trade_value} for {asset_to_trade.name}")
+    print(f"{other_player.name}", end=", ")
     response = get_response()
     if response.upper() == "Y":
-        asset_category = asset_to_trade.type
-        other_player.get_assets()[asset_category].remove(
-            asset_to_trade)  # remove asset
-        other_player.set_balance(
-            other_player.get_balance() + trade_value)  # add balance
-        current_player.set_balance(current_player.get_balance() - trade_value)
+        other_player.sell_assets(asset_to_trade)
+        add_balance(other_player, trade_value)  # add balance
+        deduct_balance(current_player, trade_value)
         current_player.buy_assets(asset_to_trade)
-        print("Trade successfully!\n")
+        print("\nTrade successfully!\n")
         asset_to_trade.set_owner(current_player)  # Set new owner
         print(asset_to_trade)
-        display_player_assets(current_player)
-        display_player_assets(other_player)
     else:
-        print(f"{other_player.name} refuses  to trade.")
+        print(f"\n{other_player.name} refuses  to trade.")
 
 
 def handle_mortgage(player):
     player_assets = player.get_assets()
     if len(player_assets) == 0:  # Player does not have any asset to mortgage
-        print(f"{player.name} does not have any properties to mortgage!")
+        print(f"\n{player.name} does not have any properties to mortgage!")
     else:
         display_player_assets(player)
         property_to_mortgage = get_asset_from_input(player)
@@ -388,11 +463,11 @@ def handle_mortgage(player):
             print(f"{property_to_mortgage.name} was already mortgaged!\n")
             property_to_mortgage = get_asset_from_input(player)
         if property_to_mortgage is None:  # Player cancels mortgage request
-            print(f"{player.name} cancels mortgage request")
+            print(f"\n{player.name} cancels mortgage request")
         else:  # Property is found and not mortgaged yet
             property_to_mortgage.set_mortgaged()  # Set property to mortgaged
             print(f"Sucessfully mortgage {property_to_mortgage.name}")
             mortgage_value = property_to_mortgage.price // 2
             add_balance(player, mortgage_value)
             print(
-                f"{player.name} received ${mortgage_value} from mortgage {property_to_mortgage.name}\n")
+                f"\n{player.name} received ${mortgage_value} from mortgage {property_to_mortgage.name}")
