@@ -12,6 +12,8 @@ from helpers import *
 
 MIN_PLAYER = 2
 MAX_PLAYER = 6
+MAX_HOUSES = 4
+MAX_HOTEL = 1
 JAIL_FEE = 50
 GO_CREDIT = 200
 MIN_TRADE = 60
@@ -164,7 +166,7 @@ def move_player(player) -> None:
     else:
         dice = player.roll_dice()
         set_new_pos(player, dice)
-        handle_player_pos(player)
+        handle_player_pos(player, dice)
         player_request = get_player_request(player)
         while player_request != 0:  # Service player's request until turn ends
             handle_player_request(player, player_request)
@@ -174,7 +176,7 @@ def move_player(player) -> None:
             print(f"{player.name} has rolled doubles, thus has an additional turn")
             dice = player.roll_dice()
             set_new_pos(player, dice)
-            handle_player_pos(player)
+            handle_player_pos(player, dice)
             player_request = get_player_request(player)
             while player_request != 0:
                 handle_player_request(player, player_request)
@@ -203,7 +205,24 @@ def add_balance(player, amount) -> None:
 
 
 def deduct_balance(player, amount) -> None:
-    player.set_balance(player.get_balance() - amount)
+    if player.get_balance() > amount:
+        player.set_balance(player.get_balance() - amount)
+    else:
+        while player.get_balance() < amount:
+            print(
+                f"{player.name}'s current balance: ${player.get_balance()} < ${amount}")
+            display_earning_options()
+            player_selection = get_int(1, 3, "selection")
+            handle_earning_options(player, player_selection)
+
+
+def handle_earning_options(player, player_selection):
+    if player_selection == 1:
+        handle_sell_house(player)
+    elif player_selection == 2:
+        handle_sell_hotel(player)
+    else:
+        handle_mortgage()
 
 
 def handle_player_in_jail(player) -> None:
@@ -235,7 +254,7 @@ def handle_player_in_jail(player) -> None:
         if player.has_rolled_double(dice):
             player.set_free()
             set_new_pos(player, dice)
-            handle_player_pos(player)
+            handle_player_pos(player, dice)
             player_request = get_player_request(player)
             while player_request != 0:
                 handle_player_request(player, player_request)
@@ -245,23 +264,31 @@ def handle_player_in_jail(player) -> None:
             if jail_turn_left == 0:
                 print(
                     f"No more turn left. {player.name} has to pay ${JAIL_FEE} fee")
-                player.set_balance(player.get_balance() - JAIL_FEE)
+                deduct_balance(player, JAIL_FEE)
                 player.set_free()
             else:
                 jail_turn_left == jail_turn_left - 1
                 player.set_turn_in_jail(jail_turn_left)
 
 
-def handle_player_pos(player) -> None:
+def handle_player_pos(player, dice) -> None:
     """ Handle all possible fees that player incurs depends on his/her position on the board"""
     card = game["board"][player.get_pos()]
     if type(card) in [Property, Utility, RailRoad]:
         rent = card.get_rent()
-        if card.owned_by() is not None and player.name != card.owned_by().name and rent != 0:  # Player is not property owner
-            property_owner = card.owned_by()
+        property_owner = card.owned_by()
+        if property_owner is not None and player != property_owner and rent != 0:  # Player is not property owner
+            if type(card) is Property:
+                card.calculateRent()
+            elif type(card) is Utility:
+                num_own = len(property_owner.get_assets()["Utility"])
+                card.calculateRent(dice[0] + dice[1], num_own == 2)
+            else:
+                num_own = len(property_owner.get_assets()["RailRoad"])
+                card.calculateRent(num_own)
+            rent = card.get_rent()
             deduct_balance(player, rent)  # Pay rent
             add_balance(property_owner, rent)  # Collect rent
-            print(card)
             print(f"{player.name} paid {property_owner.name} ${rent} for rent!\n")
     elif type(card) is Tax:
         print(card)
@@ -337,21 +364,75 @@ def handle_player_request(player, player_request) -> None:
     """ Handle all possible requests from player """
     card = game["board"][player.get_pos()]
     if player_request == 1:  # Build house
-        pass
+        handle_build_house(player)
     elif player_request == 2:  # Build hotel
-        pass
+        handle_build_hotel(player)
     elif player_request == 3:  # Trade
         handle_trade(player)
     elif player_request == 4:  # Sell house
-        pass
+        handle_sell_house(player)
     elif player_request == 5:  # Sell hotel
-        pass
+        handle_sell_hotel(player)
     elif player_request == 6:  # Mortgage
         handle_mortgage(player)
     elif player_request == 7:  # Buy property
         handle_buying_property(player, card)
     else:  # Place bid
-        pass
+        handle_bidding(player, card)
+
+
+def handle_build_house(player):
+    pass
+
+
+def handle_build_hotel(player):
+    pass
+
+
+def handle_sell_house(player):
+    pass
+
+
+def handle_sell_hotel(player):
+    pass
+
+
+def handle_bidding(current_player, card):
+    other_players = get_other_players(current_player)
+    print(f"\n{current_player.name} wants to buy {card.name} through bidding!")
+    print("Each subsequent bid must be $10 greater than the previous bid!")
+    print(f"{card.name} will belong to the highest bid or who double {card.name} price first!\n")
+    min_bid = card.price // 2
+    max_bid = card.price * 2
+    other_players.insert(0, current_player)
+    current_bid = min_bid - 10
+    highest_bidder = current_player
+    index = 0
+    while len(other_players) > 1:
+        if index >= len(other_players):
+            index = 0
+        player = other_players[index]
+        print(f"\nThe current bid for {card.name} is ${current_bid}")
+        print(f"{player.name}, place your bid:")
+        player_response = get_response()
+        if player_response.upper() == "Y":
+            current_bid = get_int(current_bid + 10, max_bid, "bidding value")
+            highest_bidder = player
+            if current_bid == max_bid:
+                print(f"\n{player.name} has doubled {card.name} price!")
+                break
+        else:
+            print(f"\n{player.name} quits bidding!")
+            # Remove player who does not participate in bidding
+            other_players.pop(index)
+            index = index - 1
+        index = index + 1
+    print(
+        f"\n{card.name} is sold to {highest_bidder.name} with ${current_bid} in cash!")
+    highest_bidder.buy_assets(card)
+    deduct_balance(highest_bidder, current_bid)
+    card.set_owner(highest_bidder)
+    print(card)
 
 
 def handle_buying_property(player, landed_property) -> None:

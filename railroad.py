@@ -16,10 +16,10 @@ class RailRoad(Land):
 
     def calculateRent(self, num_own):
         if num_own == 2:
-            self.set_rent(self.get_rent * self.OWN_TWO_MULTIFLIER)
+            self.set_rent(self.get_rent() * self.OWN_TWO_MULTIFLIER)
         elif num_own == 3:
-            self.set_rent(self.get_rent * self.OWN_THREE_MULTIFLIER)
+            self.set_rent(self.get_rent() * self.OWN_THREE_MULTIFLIER)
         elif num_own == 4:
-            self.set_rent(self.get_rent * self.OWN_FOUR_MULTIFLIER)
+            self.set_rent(self.get_rent() * self.OWN_FOUR_MULTIFLIER)
         else:
-            self.set_rent(self.get_rent * self.OWN_ONE_MULTIFLIER)
+            self.set_rent(self.get_rent() * self.OWN_ONE_MULTIFLIER)

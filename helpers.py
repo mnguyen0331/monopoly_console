@@ -8,18 +8,22 @@ from time import sleep
 
 
 def get_int(min, max, object) -> int:
-    done = False
-    while not done:
-        try:
-            user_int = int(input(f"Enter {object}: "))
-        except ValueError:
-            print("Invalid number. Please try again!")
-        else:
-            if user_int >= min and user_int <= max:
-                done = True
+    if min > max:
+        print(f"{min} is > than {max}. {max} value will be used")
+        return max
+    else:
+        done = False
+        while not done:
+            try:
+                user_int = int(input(f"Enter {object}: "))
+            except ValueError:
+                print("Invalid number. Please try again!")
             else:
-                print(f"{object} must be between {min} and {max}")
-    return user_int
+                if user_int >= min and user_int <= max:
+                    done = True
+                else:
+                    print(f"{object} must be between {min} and {max}")
+        return user_int
 
 # Clear the console after some seconds
 
@@ -30,7 +34,7 @@ def clean_console(second, message) -> None:
     # for windows
     if name == 'nt':
         _ = system('cls')
- 
+
     # for mac and linux(here, os.name is 'posix')
     else:
         _ = system('clear')

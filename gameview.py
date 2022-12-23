@@ -42,6 +42,13 @@ def display_buying_options() -> None:
     print("8. Place bid\n")
 
 
+def display_earning_options() -> None:
+    print("Choose one of the options below to get cash:")
+    print("\n1. Sell house")
+    print("2. Sell hotel")
+    print("3. Mortgage property")
+
+
 def display_player_options() -> None:
     print("\n0. End turn")
     print("1. Build house")

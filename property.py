@@ -25,17 +25,29 @@ class Property(Land):
     def get_num_hotel(self):
         return self.__numHotel
 
+    def build_house(self):
+        self.__numHouses = self.__numHouses + 1
+
+    def build_hotel(self):
+        if self.__numHouses == 4:
+            self.__numHotel = 1
+        else:
+            print(f"{self.name} must have 4 houses to construct one hotel!\n")
+
     def calculateRent(self):
         if self.__numHotel == 1:
-            self.set_rent(self.get_rent * self.HOTEL_MULTIFLIER)
-        elif self.__numHouses == 1:
-            self.set_rent(self.get_rent * self.ONE_HOUSE_MULTIFLIER)
-        elif self.__numHouses == 2:
-            self.set_rent(self.get_rent * self.TWO_HOUSE_MULTIFLIER)
-        elif self.__numHouses == 3:
-            self.set_rent(self.get_rent * self.THREE_HOUSE_MULTIFLIER)
+            self.set_rent(self.get_rent() * self.HOTEL_MULTIFLIER)
         else:
-            self.set_rent(self.get_rent * self.FOUR_HOUSE_MULTIFLIER)
+            if self.__numHouses == 0:
+                pass
+            elif self.__numHouses == 1:
+                self.set_rent(self.get_rent() * self.ONE_HOUSE_MULTIFLIER)
+            elif self.__numHouses == 2:
+                self.set_rent(self.get_rent() * self.TWO_HOUSE_MULTIFLIER)
+            elif self.__numHouses == 3:
+                self.set_rent(self.get_rent() * self.THREE_HOUSE_MULTIFLIER)
+            else:
+                self.set_rent(self.get_rent() * self.FOUR_HOUSE_MULTIFLIER)
 
     def __str__(self) -> str:
         return f"\nName: {self.name}\nColor: {self.color}\nPrice: ${self.price}\nRent: ${self.get_rent()}\nUpgrade: ${self.construction_cost}\nOwner: {self.owned_by()}\n"
