@@ -10,4 +10,4 @@ class Tax:
         return self.__tax_amount
 
     def __str__(self) -> str:
-        return f"The tax amount is ${self.get_tax_amount()}\n"
+        return f"The tax amount is ${self.get_tax_amount()}"

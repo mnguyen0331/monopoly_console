@@ -68,7 +68,7 @@ def display_end_turn(player) -> None:
 
 
 def display_jail_options(player) -> None:
-    print(f"\n{player.name} are in jail. Below are {player.name}'s options to get out of jail: ")
+    print(f"\n{player.name} is in jail. Below are {player.name}'s options to get out of jail: ")
     print("-" * LINE_LEN)
     print("1. Use Get Out of Jail Card")
     print("2. Paid $50")
@@ -90,12 +90,14 @@ def display_player_assets(player) -> None:
             for asset in assets:
                 if asset_type == "Property":
                     print(
-                        f"[{asset.name},{asset.color},Price: ${asset.price}, Rent: ${asset.get_rent()}]", end=" ")
+                        f"[{asset.name}, {asset.color}, Price: ${asset.price}, Rent: ${asset.get_rent()}]", end=" ")
+                elif asset_type == "Card":
+                    print(
+                        f"[{asset.name}]", end=" ")
                 else:
                     print(
-                        f"[{asset.name},Price: ${asset.price}, Rent: ${asset.get_rent()}]", end=" ")
+                        f"[{asset.name}, Price: ${asset.price}]", end=" ")
             print("")
-        print("")
 
 
 def display_quit_message(player) -> None:

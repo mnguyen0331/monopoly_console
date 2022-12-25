@@ -3,6 +3,9 @@
 
 import random
 
+COLOR_GROUPS = {"Brown": 2, "Teal": 3, "Pink": 3,
+                "Orange": 3, "Red": 3, "Yellow": 3, "Green": 3, "Blue": 2}
+
 
 class Player:
     def __init__(self, name, token):
@@ -15,6 +18,7 @@ class Player:
         self.__in_jail = 0
         self.__bankrupt = False
         self.__assets = dict()
+        self.__property_color_groups = dict()
 
     def __eq__(self, other) -> bool:
         return self.name == other.name
@@ -27,6 +31,26 @@ class Player:
 
     def get_pos(self):
         return self.__pos
+
+    def get_property_color_groups(self) -> dict:
+        return self.__property_color_groups
+
+    def own_color_group(self, asset) -> bool:
+        # Returns true if player has all assets in the same color group
+        return self.__property_color_groups[asset.color] == COLOR_GROUPS[asset.color]
+
+    def check_num_houses(self, asset) -> bool:
+        """ Checking the number of houses of other properties in 
+        the same color group as the property param. """
+        property_list = self.get_assets()["Property"]
+        same_color_list = list()
+        for prop in property_list:
+            if prop.color == asset.color:
+                same_color_list.append(prop)
+        for prop in same_color_list:
+            if asset.get_num_houses() - prop.get_num_houses() > 1:
+                return False
+        return True
 
     def is_bankrupt(self):
         return self.__bankrupt
@@ -92,7 +116,6 @@ class Player:
         return f"{self.name}"
 
     def buy_assets(self, asset):
-        asset.set_owner(self)
         asset_category = asset.type
         existed_asset_category = self.__assets.keys()
         if asset_category in existed_asset_category:
@@ -101,8 +124,20 @@ class Player:
             asset_list = list()
             asset_list.append(asset)
             self.__assets.update({asset_category: asset_list})
+        if asset.type == "Property":
+            existed_color_groups = self.get_property_color_groups().keys()
+            if asset.color in existed_color_groups:
+                previous_color_count = self.__property_color_groups[asset.color]
+                self.__property_color_groups.update(
+                    {asset.color: previous_color_count + 1})
+            else:
+                self.__property_color_groups.update({asset.color: 1})
+            if self.own_color_group(asset):
+                asset.set_same_color_group()
         print(f"\n{self.name}'s purchasing {asset.name} successfully!")
-        print(asset)
+        if asset.type != "Card":
+            asset.set_owner(self)
+            print(asset)
 
     def sell_assets(self, asset, amount):
         self.add_balance(amount)

@@ -14,6 +14,6 @@ class Utility(Land):
 
     def calculateRent(self, num_on_dice, has_two_utility):
         if has_two_utility:
-            self.set_rent(self.SINGLE_UTI_MULTIPLIER * num_on_dice)
-        else:
             self.set_rent(self.DOUBLE_UTI_MULTIPLIER * num_on_dice)
+        else:
+            self.set_rent(self.SINGLE_UTI_MULTIPLIER * num_on_dice)

@@ -12,8 +12,6 @@ from helpers import *
 
 MIN_PLAYER = 2
 MAX_PLAYER = 6
-MAX_HOUSES = 4
-MAX_HOTEL = 1
 JAIL_FEE = 50
 GO_CREDIT = 200
 MIN_TRADE = 60
@@ -23,6 +21,7 @@ INCOME_TAX_REFUND = 50
 STOCK_MATURE = 100
 DENTIST_FEE = 50
 COLLEGE_DEBT = 100
+
 
 CHANCES = {1: f"It's your birthdate. Everyone gives you ${BIRTHDATE_GIFT} for birthday gifts!",
            2: f"Income tax refund. Received ${INCOME_TAX_REFUND}.",
@@ -153,7 +152,7 @@ def sort_player_turn() -> None:
 def check_game_over() -> None:
     # Game is over when one of the players is bankcrupt
     for player in game["players"]:
-        if player.is_bankcrupt():
+        if player.is_bankrupt():
             game["over"] = True
             break
 
@@ -245,7 +244,7 @@ def handle_player_in_jail(player) -> None:
                 player.sell_assets(jail_free_card, 0)
                 player.set_free()
                 print(f"{player.name} is free!")
-        except:
+        except KeyError:
             print(f"{player.name} does not have any card!")
             handle_player_in_jail(player)
     elif user_selection == 2:  # Paid fee
@@ -255,7 +254,7 @@ def handle_player_in_jail(player) -> None:
         print(f"{player.name} is free!")
     else:  # Roll dice
         dice = player.roll_dice()
-        if player.has_rolled_double(dice):
+        if player.has_rolled_doubles(dice):
             player.set_free()
             set_new_pos(player, dice)
             handle_player_pos(player, dice)
@@ -379,7 +378,20 @@ def handle_player_request(player, player_request) -> None:
 
 
 def handle_build_house(player):
-    pass
+    display_player_assets(player)
+    property_to_build = get_asset_from_input(player)
+    while type(property_to_build) is not Property:
+        print("\n***Incorrect type. Can only construct houses on properties only***")
+        property_to_build = get_asset_from_input(player)
+    if player.own_color_group(property_to_build):
+        if player.check_num_houses(property_to_build):
+            handle_deduct_balance(player, property_to_build.construction_cost)
+            property_to_build.build_house()
+        else:
+            print(f"\nUnable to build house. Houses must be built linearly")
+    else:
+        print(
+            f"\nUnable to build house. {player.name} does not own a complete color set of properties")
 
 
 def handle_build_hotel(player):
@@ -486,7 +498,7 @@ def get_player_by_name(player_list) -> Player:
 
 def get_asset_from_input(player):
     # Return asset based on name and category entered
-    asset_category = input("Enter asset's type (Q to cancel): ")
+    asset_category = input("\nEnter asset's type (Q to cancel): ")
     asset = None
     while asset_category.upper() != "Q":
         try:
@@ -501,10 +513,10 @@ def get_asset_from_input(player):
                         asset_category = "Q"  # Exit while loop
                         break
                 if asset is None:  # Cannot find asset_name
-                    print(f"{asset_name} does not exist\n")
+                    print(f"\n{asset_name} does not exist")
         except KeyError:
-            print(f"{asset_category} category does not exist\n")
-            asset_category = input("Enter asset's type (Q to cancel): ")
+            print(f"\n{asset_category} category does not exist")
+            asset_category = input("\nEnter asset's type (Q to cancel): ")
     return asset
 
 

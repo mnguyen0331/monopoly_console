@@ -11,11 +11,15 @@ class Land:
         self.price = price
         self.type = category
         self.__rent = base_rent
+        self.__base_rent = base_rent
         self.__owned = None
         self.__mortgaged = False
 
     def get_rent(self):
         return self.__rent
+
+    def get_base_rent(self):
+        return self.__base_rent
 
     def owned_by(self):
         return self.__owned
@@ -36,7 +40,7 @@ class Land:
         self.__rent = new_rent
 
     def __str__(self) -> None:
-        return f"\n{self.name}\nPrice: ${self.price}\nRent: ${self.get_rent()}\nOwner: {self.owned_by()}"
+        return f"\n{self.name}\nPrice: ${self.price}\nOwner: {self.owned_by()}"
 
     @abstractmethod
     def calculateRent():
