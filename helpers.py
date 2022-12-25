@@ -43,7 +43,7 @@ def clean_console(second, message) -> None:
 
 
 def get_response() -> str:
-    response = input("Do you want to proceed? (Y/N) ")
+    response = input("\nDo you want to proceed? (Y/N) ")
     while (response not in ["Y", "N", "y", "n"]):
         print("Unrecognized command. Please try again!")
         response = input("Do you want to proceed? ")

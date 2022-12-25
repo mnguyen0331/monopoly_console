@@ -139,7 +139,7 @@ def initialize_game():
 def sort_player_turn() -> None:
     # Sort a list of players in decending order
     print("Let's determine the turn by throwing dice.")
-    print("The player with highest number will go first.\n")
+    print("The player with highest number will go first.")
     players = game["players"]
     for player in players:
         dice = player.roll_dice()
@@ -150,7 +150,7 @@ def sort_player_turn() -> None:
     input("Enter to continue: ")
 
 
-def set_game_over() -> None:
+def check_game_over() -> None:
     # Game is over when one of the players is bankcrupt
     for player in game["players"]:
         if player.is_bankcrupt():
@@ -190,7 +190,7 @@ def set_new_pos(player, dice) -> None:
     new_pos = move_step + player.get_pos()
     if new_pos >= len(game["board"]):  # Passing GO
         new_pos = new_pos - len(game["board"])
-        add_balance(player, GO_CREDIT)
+        player.add_balance(GO_CREDIT)
     landed_card = game["board"][new_pos]
     display_player_landing(player, landed_card)
     if landed_card.name == "GO TO JAIL" or player.has_doubles_three_times():
@@ -200,20 +200,14 @@ def set_new_pos(player, dice) -> None:
     player.set_pos(new_pos)
 
 
-def add_balance(player, amount) -> None:
-    player.set_balance(player.get_balance() + amount)
-
-
-def deduct_balance(player, amount) -> None:
-    if player.get_balance() > amount:
-        player.set_balance(player.get_balance() - amount)
-    else:
-        while player.get_balance() < amount:
-            print(
-                f"{player.name}'s current balance: ${player.get_balance()} < ${amount}")
-            display_earning_options()
-            player_selection = get_int(1, 3, "selection")
-            handle_earning_options(player, player_selection)
+def handle_deduct_balance(player, amount) -> None:
+    while player.get_balance() < amount and not player.is_bankrupt():
+        print(f"\n{player.name} does not have sufficient fund to cover ${amount}")
+        display_earning_options()
+        player_selection = get_int(1, 4, "selection")
+        handle_earning_options(player, player_selection)
+    if not player.is_bankrupt():
+        player.deduct_balance(amount)
 
 
 def handle_earning_options(player, player_selection):
@@ -221,8 +215,18 @@ def handle_earning_options(player, player_selection):
         handle_sell_house(player)
     elif player_selection == 2:
         handle_sell_hotel(player)
-    else:
-        handle_mortgage()
+    elif player_selection == 3:
+        handle_mortgage(player)
+    else:  # Declare bankcruptcy
+        if len(player.get_assets()) > 0:
+            print(f"\n{player.name} still has some assets left!!!")
+        else:
+            confirmation = get_response()
+            if confirmation.upper() == "Y":
+                display_quit_message(player)
+                player.set_bankrupt()
+            else:
+                print("Cancel request")
 
 
 def handle_player_in_jail(player) -> None:
@@ -238,7 +242,7 @@ def handle_player_in_jail(player) -> None:
             if jail_free_card is None:
                 print(f"{player.name} does not have Jail Free Card")
             else:
-                player.sell_assets(jail_free_card)
+                player.sell_assets(jail_free_card, 0)
                 player.set_free()
                 print(f"{player.name} is free!")
         except:
@@ -246,7 +250,7 @@ def handle_player_in_jail(player) -> None:
             handle_player_in_jail(player)
     elif user_selection == 2:  # Paid fee
         print(f"{player.name} paid ${JAIL_FEE} to get out of jail")
-        deduct_balance(player, JAIL_FEE)
+        handle_deduct_balance(player, JAIL_FEE)
         player.set_free()
         print(f"{player.name} is free!")
     else:  # Roll dice
@@ -264,7 +268,7 @@ def handle_player_in_jail(player) -> None:
             if jail_turn_left == 0:
                 print(
                     f"No more turn left. {player.name} has to pay ${JAIL_FEE} fee")
-                deduct_balance(player, JAIL_FEE)
+                handle_deduct_balance(player, JAIL_FEE)
                 player.set_free()
             else:
                 jail_turn_left == jail_turn_left - 1
@@ -275,9 +279,8 @@ def handle_player_pos(player, dice) -> None:
     """ Handle all possible fees that player incurs depends on his/her position on the board"""
     card = game["board"][player.get_pos()]
     if type(card) in [Property, Utility, RailRoad]:
-        rent = card.get_rent()
         property_owner = card.owned_by()
-        if property_owner is not None and player != property_owner and rent != 0:  # Player is not property owner
+        if property_owner is not None and player != property_owner and not card.is_mortgaged():
             if type(card) is Property:
                 card.calculateRent()
             elif type(card) is Utility:
@@ -286,14 +289,12 @@ def handle_player_pos(player, dice) -> None:
             else:
                 num_own = len(property_owner.get_assets()["RailRoad"])
                 card.calculateRent(num_own)
-            rent = card.get_rent()
-            deduct_balance(player, rent)  # Pay rent
-            add_balance(property_owner, rent)  # Collect rent
-            print(f"{player.name} paid {property_owner.name} ${rent} for rent!\n")
+            handle_deduct_balance(player, card.get_rent())
+            player.make_payment(property_owner, card.get_rent(), "rent")
     elif type(card) is Tax:
         print(card)
-        print(f"{player.name} must pay ${card.get_tax_amount()}\n")
-        deduct_balance(player, card.get_tax_amount())
+        handle_deduct_balance(player, card.get_tax_amount())
+        player.make_payment(card, card.get_tax_amount(), "tax")
     elif type(card) is Chance:
         action_num = card.get_action()
         handle_chances(player, action_num)
@@ -309,22 +310,18 @@ def handle_chances(player, action_num):
     print(CHANCES[action_num])
     if action_num == 1:
         other_players = get_other_players(player)
-        print(f"\nFor {player.name}'s birthdate,")
         for other_player in other_players:
-            print(f"{other_player} gifted ${BIRTHDATE_GIFT}", end=". ")
-            print(
-                f"Previous balance: ${other_player.get_balance()}", end=" -> ")
-            deduct_balance(other_player, BIRTHDATE_GIFT)
-            print(f"Current balance: ${other_player.get_balance()}")
-            add_balance(player, BIRTHDATE_GIFT)
+            handle_deduct_balance(other_player, BIRTHDATE_GIFT)
+            other_player.make_payment(
+                player, BIRTHDATE_GIFT, f"{player.name}'s birthday")
     elif action_num == 2:
-        add_balance(player, INCOME_TAX_REFUND)
+        player.add_balance(INCOME_TAX_REFUND)
     elif action_num == 3:
-        add_balance(player, STOCK_MATURE)
+        player.add_balance(STOCK_MATURE)
     elif action_num == 4:
-        deduct_balance(player, DENTIST_FEE)
+        handle_deduct_balance(player, DENTIST_FEE)
     elif action_num == 5:
-        deduct_balance(player, COLLEGE_DEBT)
+        handle_deduct_balance(player, COLLEGE_DEBT)
     else:
         player.set_turn_in_jail(3)
         player.set_pos(get_card_pos("JAIL"))
@@ -339,7 +336,7 @@ def handle_chests(player, action_num):
         player.buy_assets(Card("Rent Waiver Card"))
     elif action_num == 3:
         player.set_pos(get_card_pos("GO"))
-        add_balance(player, GO_CREDIT)
+        player.add_balance(GO_CREDIT)
     else:
         player.buy_assets(Card("Hotel Card"))
 
@@ -428,22 +425,17 @@ def handle_bidding(current_player, card):
             index = index - 1
         index = index + 1
     print(
-        f"\n{card.name} is sold to {highest_bidder.name} with ${current_bid} in cash!")
+        f"\n{card.name} was sold to {highest_bidder.name} with ${current_bid} in cash!")
+    handle_deduct_balance(highest_bidder, current_bid)
     highest_bidder.buy_assets(card)
-    deduct_balance(highest_bidder, current_bid)
-    card.set_owner(highest_bidder)
-    print(card)
 
 
 def handle_buying_property(player, landed_property) -> None:
     print(landed_property)
     response = get_response()
     if response.upper() == "Y":
-        deduct_balance(player, landed_property.price)
-        landed_property.set_owner(player)
+        handle_deduct_balance(player, landed_property.price)
         player.buy_assets(landed_property)
-        print(f"Purchase {landed_property.name} successfully!")
-        display_player_assets(player)
     else:
         print("Cancel request")
 
@@ -522,13 +514,9 @@ def trade_asset(current_player, other_player, asset_to_trade, trade_value):
     print(f"{other_player.name}", end=", ")
     response = get_response()
     if response.upper() == "Y":
-        other_player.sell_assets(asset_to_trade)
-        add_balance(other_player, trade_value)  # add balance
-        deduct_balance(current_player, trade_value)
+        handle_deduct_balance(current_player, trade_value)
+        other_player.sell_assets(asset_to_trade, trade_value)
         current_player.buy_assets(asset_to_trade)
-        print("\nTrade successfully!\n")
-        asset_to_trade.set_owner(current_player)  # Set new owner
-        print(asset_to_trade)
     else:
         print(f"\n{other_player.name} refuses  to trade.")
 
@@ -546,9 +534,4 @@ def handle_mortgage(player):
         if property_to_mortgage is None:  # Player cancels mortgage request
             print(f"\n{player.name} cancels mortgage request")
         else:  # Property is found and not mortgaged yet
-            property_to_mortgage.set_mortgaged()  # Set property to mortgaged
-            print(f"Sucessfully mortgage {property_to_mortgage.name}")
-            mortgage_value = property_to_mortgage.price // 2
-            add_balance(player, mortgage_value)
-            print(
-                f"\n{player.name} received ${mortgage_value} from mortgage {property_to_mortgage.name}")
+            player.mortgage_property(property_to_mortgage)

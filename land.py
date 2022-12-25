@@ -28,15 +28,15 @@ class Land:
 
     def set_mortgaged(self):
         self.__mortgaged = True
-        self.__rent = 0
+
+    def lift_mortgage(self):
+        self.__mortgaged = False
 
     def set_rent(self, new_rent):
         self.__rent = new_rent
 
     def __str__(self) -> None:
-        if (self.price != 0):
-            return f"{self.name}\nPrice: ${self.price}\nRent: ${self.get_rent()}\n"
-        return f"{self.name}\n"
+        return f"\n{self.name}\nPrice: ${self.price}\nRent: ${self.get_rent()}\nOwner: {self.owned_by()}"
 
     @abstractmethod
     def calculateRent():

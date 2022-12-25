@@ -6,7 +6,7 @@ LINE_LEN = 60
 
 def display_welcome_message() -> None:
     print("*" * LINE_LEN)
-    print("Welcome to my monopoly game!\n")
+    print("\nWelcome to my monopoly game!\n")
 
 
 def display_game_setting() -> None:
@@ -14,7 +14,7 @@ def display_game_setting() -> None:
 
 
 def display_roll_order(players) -> None:
-    print("The rolling order is:")
+    print("\nThe rolling order is:")
     for i in range(len(players)):
         print(f"{i + 1}. {players[i].name}")
     print("*" * LINE_LEN)
@@ -34,7 +34,8 @@ def display_players(players) -> None:
 
 def display_start_turn(player) -> None:
     print(f"It's {player.name}'s TURN")
-    print(f"{player.name}'s current balance: ${player.get_balance()}\n")
+    print(f"{player.name}'s current balance: ${player.get_balance()}")
+    display_player_assets(player)
 
 
 def display_buying_options() -> None:
@@ -47,6 +48,7 @@ def display_earning_options() -> None:
     print("\n1. Sell house")
     print("2. Sell hotel")
     print("3. Mortgage property")
+    print("4. Declare Bankruptcy")
 
 
 def display_player_options() -> None:
@@ -80,9 +82,9 @@ def display_player_landing(player, card) -> None:
 def display_player_assets(player) -> None:
     player_assets = player.get_assets()
     if len(player_assets) == 0:
-        print(f"\n{player.name} does not have any assets")
+        print(f"{player.name} does not have any assets")
     else:
-        print(f"All {player.name}'s current assets:")
+        print(f"\nAll {player.name}'s current assets:")
         for asset_type, assets in player_assets.items():
             print(f"{asset_type}: ", end="")
             for asset in assets:
@@ -93,3 +95,11 @@ def display_player_assets(player) -> None:
                     print(
                         f"[{asset.name},Price: ${asset.price}, Rent: ${asset.get_rent()}]", end=" ")
             print("")
+        print("")
+
+
+def display_quit_message(player) -> None:
+    print("*" * LINE_LEN)
+    print(f"\n{player.name} has declared bankruptcy")
+    print(f"{player.name} will no longer be in the game\n")
+    print("*" * LINE_LEN)

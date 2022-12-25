@@ -6,9 +6,8 @@ from gamecontroller import *
 
 initialize_game()
 
-i = 5
-
-while i > 0:
+while not game["over"]:
     for player in game["players"]:
-        move_player(player)
-    i = i - 1
+        if not player.is_bankrupt():
+            move_player(player)
+    check_game_over()
