@@ -3,8 +3,7 @@
 
 from land import Land
 
-MAX_HOUSES = 4
-MAX_HOTEL = 1
+MAX_HOUSES = 5
 
 
 class Property(Land):
@@ -20,53 +19,56 @@ class Property(Land):
         super().__init__(name, price, category, base_rent)
         self.color = color
         self.construction_cost = construction_cost
-        self.__numHouses = 0
-        self.__numHotel = 0
+        self.__num_houses = 0
         self.__color_group = False
 
     def get_num_houses(self):
-        return self.__numHouses
-
-    def get_num_hotel(self):
-        return self.__numHotel
+        return self.__num_houses
 
     def build_house(self):
         if self.get_num_houses() < MAX_HOUSES:
-            self.__numHouses = self.__numHouses + 1
+            self.__num_houses = self.__num_houses + 1
+            if self.get_num_houses() == 5:
+                print(
+                    f"5 houses on {self.name} will be replaced with one hotel")
         else:
             print(
                 f"\nMaximum houses reached. Cannot build anymore houses on {self.name}")
 
-    def build_hotel(self):
-        if self.__numHouses == 4:
-            self.__numHotel = 1
-        else:
-            print(f"{self.name} must have 4 houses to construct one hotel!\n")
+    def sell_house(self):
+        self.__num_houses = self.__num_houses - 1
 
-    def set_same_color_group(self) -> None:
-        self.__color_group = True
+    def set_same_color_group(self, value) -> None:
+        self.__color_group = value
 
     def calculateRent(self):
-        if self.__color_group:
+        num_houses = self.get_num_houses()
+        if num_houses == 0:
+            self.set_rent(self.get_base_rent())
+        elif num_houses == 1:
+            self.set_rent(self.get_base_rent() *
+                          self.ONE_HOUSE_MULTIFLIER)
+        elif num_houses == 2:
+            self.set_rent(self.get_base_rent() *
+                          self.TWO_HOUSE_MULTIFLIER)
+        elif num_houses == 3:
+            self.set_rent(self.get_base_rent() *
+                          self.THREE_HOUSE_MULTIFLIER)
+        elif num_houses == 4:
+            self.set_rent(self.get_base_rent() *
+                          self.FOUR_HOUSE_MULTIFLIER)
+        elif num_houses == 5:
+            self.set_rent(self.get_base_rent() *
+                          self.HOTEL_MULTIFLIER)
+        elif self.__color_group:
             self.set_rent(self.get_base_rent() * self.SAME_COLOR_MULTIFLIER)
         else:
-            if self.__numHotel == 1:
-                self.set_rent(self.get_base_rent() * self.HOTEL_MULTIFLIER)
-            else:
-                if self.__numHouses == 0:
-                    self.set_rent(self.get_base_rent())
-                elif self.__numHouses == 1:
-                    self.set_rent(self.get_base_rent() *
-                                  self.ONE_HOUSE_MULTIFLIER)
-                elif self.__numHouses == 2:
-                    self.set_rent(self.get_base_rent() *
-                                  self.TWO_HOUSE_MULTIFLIER)
-                elif self.__numHouses == 3:
-                    self.set_rent(self.get_base_rent() *
-                                  self.THREE_HOUSE_MULTIFLIER)
-                else:
-                    self.set_rent(self.get_base_rent() *
-                                  self.FOUR_HOUSE_MULTIFLIER)
+            self.set_rent(self.get_base_rent())
 
     def __str__(self) -> str:
-        return f"\nName: {self.name}\nColor: {self.color}\nPrice: ${self.price}\nRent: ${self.get_rent()}\nUpgrade: ${self.construction_cost}\nOwner: {self.owned_by()}\nHouses: {self.get_num_houses()}\nHotel: {self.get_num_hotel()}"
+        building = "House"
+        num_building = self.get_num_houses()
+        if num_building == 5:
+            building = "Hotel"
+            num_building = 1
+        return f"\nName: {self.name}\nColor: {self.color}\nPrice: ${self.price}\nRent: ${self.get_rent()}\nUpgrade: ${self.construction_cost}\nOwner: {self.owned_by()}\n{building}: {num_building}"

@@ -37,6 +37,14 @@ class Chest:
 
 
 class Card:
-    def __init__(self, name) -> None:
+    def __init__(self, name, price) -> None:
         self.name = name
         self.type = "Card"
+        self.price = price
+        self.__owner = None
+
+    def set_owner(self, owner) -> None:
+        self.__owner = owner
+
+    def __str__(self) -> str:
+        return f"\nName: {self.name}\nPrice: ${self.price}\nOwner: {self.__owner}"

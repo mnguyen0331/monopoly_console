@@ -29,46 +29,44 @@ def display_board(game) -> None:
 
 def display_players(players) -> None:
     for player in players:
-        print(f"{player.name}")
+        print(f"{player}")
 
 
 def display_start_turn(player) -> None:
-    print(f"It's {player.name}'s TURN")
-    print(f"{player.name}'s current balance: ${player.get_balance()}")
+    print(f"It's {player}'s TURN")
+    print(f"{player}'s current balance: ${player.get_balance()}")
     display_player_assets(player)
 
 
 def display_buying_options() -> None:
-    print("7. Buy property")
-    print("8. Place bid\n")
+    print("6. Buy property")
+    print("7. Place bid\n")
 
 
 def display_earning_options() -> None:
     print("Choose one of the options below to get cash:")
     print("\n1. Sell house")
-    print("2. Sell hotel")
-    print("3. Mortgage property")
-    print("4. Declare Bankruptcy")
+    print("2. Mortgage property")
+    print("3. Declare Bankruptcy")
 
 
 def display_player_options() -> None:
     print("\n0. End turn")
     print("1. Build house")
-    print("2. Build hotel")
-    print("3. Trade")
-    print("4. Sell house")
-    print("5. Sell hotel")
-    print("6. Mortgage property")
+    print("2. Trade")
+    print("3. Sell house")
+    print("4. Mortgage property")
+    print("5. Lift mortgage")
 
 
 def display_end_turn(player) -> None:
-    print(f"\n{player.name}'s turn ENDs")
-    print(f"{player.name}'s current balance: ${player.get_balance()}")
+    print(f"\n{player}'s turn ENDs")
+    print(f"{player}'s current balance: ${player.get_balance()}")
     print("-" * LINE_LEN)
 
 
 def display_jail_options(player) -> None:
-    print(f"\n{player.name} is in jail. Below are {player.name}'s options to get out of jail: ")
+    print(f"\n{player} is in jail. Below are {player}'s options to get out of jail: ")
     print("-" * LINE_LEN)
     print("1. Use Get Out of Jail Card")
     print("2. Paid $50")
@@ -82,26 +80,34 @@ def display_player_landing(player, card) -> None:
 def display_player_assets(player) -> None:
     player_assets = player.get_assets()
     if len(player_assets) == 0:
-        print(f"{player.name} does not have any assets")
+        print(f"{player} does not have any assets")
     else:
-        print(f"\nAll {player.name}'s current assets:")
-        for asset_type, assets in player_assets.items():
-            print(f"{asset_type}: ", end="")
-            for asset in assets:
-                if asset_type == "Property":
+        print(f"\nAll {player}'s current assets:")
+        for category in player_assets.keys():
+            assets = player_assets[category]
+            if category == "Property":
+                print(f"{category}:")
+                for color, properties in assets.items():
+                    print(f"\t{color}: ", end="")
+                    for prop in properties:
+                        print(
+                            f"[{prop.name}, Price: ${prop.price}, Mortgaged? {prop.is_mortgaged()}]", end=" ")
+                    print("")
+            elif category == "Card":
+                print(f"{category}: ", end="")
+                for card in assets:
+                    print(f"[{card.name}, Price: ${card.price}]", end=" ")
+                print("")
+            else:
+                print(f"{category}: ", end="")
+                for asset in assets:
                     print(
-                        f"[{asset.name}, {asset.color}, Price: ${asset.price}, Rent: ${asset.get_rent()}]", end=" ")
-                elif asset_type == "Card":
-                    print(
-                        f"[{asset.name}]", end=" ")
-                else:
-                    print(
-                        f"[{asset.name}, Price: ${asset.price}]", end=" ")
-            print("")
+                        f"[{asset.name}, Price: ${asset.price}, Mortgaged? {asset.is_mortgaged()}]", end=" ")
+                print("")
 
 
 def display_quit_message(player) -> None:
     print("*" * LINE_LEN)
-    print(f"\n{player.name} has declared bankruptcy")
-    print(f"{player.name} will no longer be in the game\n")
+    print(f"\n{player} has declared bankruptcy")
+    print(f"{player} will no longer be in the game\n")
     print("*" * LINE_LEN)

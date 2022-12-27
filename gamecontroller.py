@@ -34,7 +34,7 @@ CHANCES = {1: f"It's your birthdate. Everyone gives you ${BIRTHDATE_GIFT} for bi
 CHESTS = {1: "Get out of jail free card",
           2: "Rent Waiver Card",
           3: f"Advance to GO and collect ${GO_CREDIT}",
-          4: "Building Hotel Pass. Hotel can be upgraded from three houses"
+          4: "Building House Discount. One house can be constructed with half the price"
           }
 
 game = {"board": list(), "players": list(), "over": False}
@@ -172,7 +172,7 @@ def move_player(player) -> None:
             player_request = get_player_request(player)
         while player.has_rolled_doubles(dice) and not player.is_in_jail():
             clean_console(3, "LOADING...")
-            print(f"{player.name} has rolled doubles, thus has an additional turn")
+            print(f"{player} has rolled doubles, thus has an additional turn")
             dice = player.roll_dice()
             set_new_pos(player, dice)
             handle_player_pos(player, dice)
@@ -193,7 +193,7 @@ def set_new_pos(player, dice) -> None:
     landed_card = game["board"][new_pos]
     display_player_landing(player, landed_card)
     if landed_card.name == "GO TO JAIL" or player.has_doubles_three_times():
-        print(f"{player.name} is sent to Jail")
+        print(f"{player} is sent to Jail")
         player.set_turn_in_jail(3)
         new_pos = get_card_pos("JAIL")
     player.set_pos(new_pos)
@@ -201,9 +201,9 @@ def set_new_pos(player, dice) -> None:
 
 def handle_deduct_balance(player, amount) -> None:
     while player.get_balance() < amount and not player.is_bankrupt():
-        print(f"\n{player.name} does not have sufficient fund to cover ${amount}")
+        print(f"\n{player} does not have sufficient fund to cover ${amount}")
         display_earning_options()
-        player_selection = get_int(1, 4, "selection")
+        player_selection = get_int(1, 3, "selection")
         handle_earning_options(player, player_selection)
     if not player.is_bankrupt():
         player.deduct_balance(amount)
@@ -213,12 +213,10 @@ def handle_earning_options(player, player_selection):
     if player_selection == 1:
         handle_sell_house(player)
     elif player_selection == 2:
-        handle_sell_hotel(player)
-    elif player_selection == 3:
         handle_mortgage(player)
     else:  # Declare bankcruptcy
         if len(player.get_assets()) > 0:
-            print(f"\n{player.name} still has some assets left!!!")
+            print(f"\n{player} still has some assets left!!!")
         else:
             confirmation = get_response()
             if confirmation.upper() == "Y":
@@ -232,26 +230,17 @@ def handle_player_in_jail(player) -> None:
     display_jail_options(player)
     user_selection = get_int(1, 3, "selection")
     if user_selection == 1:  # Use card
-        try:
-            jail_free_card = None
-            for card in player.get_assets()["Card"]:
-                if card.name == "Jail Free Card":
-                    jail_free_card = card
-                    break
-            if jail_free_card is None:
-                print(f"{player.name} does not have Jail Free Card")
-            else:
-                player.sell_assets(jail_free_card, 0)
-                player.set_free()
-                print(f"{player.name} is free!")
-        except KeyError:
-            print(f"{player.name} does not have any card!")
+        valid_usage = player.use_card("Jail Free Card")
+        if valid_usage:
+            player.set_free()
+            print(f"{player} is free!")
+        else:
             handle_player_in_jail(player)
     elif user_selection == 2:  # Paid fee
-        print(f"{player.name} paid ${JAIL_FEE} to get out of jail")
+        print(f"{player} paid ${JAIL_FEE} to get out of jail")
         handle_deduct_balance(player, JAIL_FEE)
         player.set_free()
-        print(f"{player.name} is free!")
+        print(f"{player} is free!")
     else:  # Roll dice
         dice = player.roll_dice()
         if player.has_rolled_doubles(dice):
@@ -266,7 +255,7 @@ def handle_player_in_jail(player) -> None:
             jail_turn_left = player.turn_left_in_jail()
             if jail_turn_left == 0:
                 print(
-                    f"No more turn left. {player.name} has to pay ${JAIL_FEE} fee")
+                    f"No more turn left. {player} has to pay ${JAIL_FEE} fee")
                 handle_deduct_balance(player, JAIL_FEE)
                 player.set_free()
             else:
@@ -281,6 +270,10 @@ def handle_player_pos(player, dice) -> None:
         property_owner = card.owned_by()
         if property_owner is not None and player != property_owner and not card.is_mortgaged():
             if type(card) is Property:
+                if property_owner.own_color_group(card):
+                    card.set_same_color_group(True)
+                else:
+                    card.set_same_color_group(False)
                 card.calculateRent()
             elif type(card) is Utility:
                 num_own = len(property_owner.get_assets()["Utility"])
@@ -288,8 +281,18 @@ def handle_player_pos(player, dice) -> None:
             else:
                 num_own = len(property_owner.get_assets()["RailRoad"])
                 card.calculateRent(num_own)
-            handle_deduct_balance(player, card.get_rent())
-            player.make_payment(property_owner, card.get_rent(), "rent")
+            rent_waiver_card = player.get_required_card("Rent Waiver Card")
+            if rent_waiver_card is not None:
+                print(
+                    f"\n{player} has a Rent Waiver Card. Using it to waive rent?")
+                confirmation = get_response()
+                if confirmation.upper() == "Y":
+                    player.use_card("Rent Waiver Card")
+                else:
+                    print(f"\n{player} does not want to use Rent Waiver Card")
+            else:
+                handle_deduct_balance(player, card.get_rent())
+                player.make_payment(property_owner, card.get_rent(), "rent")
     elif type(card) is Tax:
         print(card)
         handle_deduct_balance(player, card.get_tax_amount())
@@ -312,7 +315,7 @@ def handle_chances(player, action_num):
         for other_player in other_players:
             handle_deduct_balance(other_player, BIRTHDATE_GIFT)
             other_player.make_payment(
-                player, BIRTHDATE_GIFT, f"{player.name}'s birthday")
+                player, BIRTHDATE_GIFT, f"{player}'s birthday")
     elif action_num == 2:
         player.add_balance(INCOME_TAX_REFUND)
     elif action_num == 3:
@@ -330,14 +333,14 @@ def handle_chests(player, action_num):
     """ Handle all possible actions from chests """
     print(CHESTS[action_num])
     if action_num == 1:
-        player.buy_assets(Card("Jail Free Card"))
+        player.add_card(Card("Jail Free Card", 50))
     elif action_num == 2:
-        player.buy_assets(Card("Rent Waiver Card"))
+        player.add_card(Card("Rent Waiver Card", 100))
     elif action_num == 3:
         player.set_pos(get_card_pos("GO"))
         player.add_balance(GO_CREDIT)
     else:
-        player.buy_assets(Card("Hotel Card"))
+        player.add_card(Card("House Discount Card", 100))
 
 
 def get_player_request(player) -> int:
@@ -348,11 +351,11 @@ def get_player_request(player) -> int:
     if type(card) in [Property, Utility, RailRoad] and card.owned_by() is None:
         display_player_options()
         display_buying_options()
-        player_request = get_int(0, 8, "request")
+        player_request = get_int(0, 7, "request")
     else:
         display_player_options()
         print("")
-        player_request = get_int(0, 6, "request")
+        player_request = get_int(0, 5, "request")
     return player_request
 
 
@@ -361,54 +364,98 @@ def handle_player_request(player, player_request) -> None:
     card = game["board"][player.get_pos()]
     if player_request == 1:  # Build house
         handle_build_house(player)
-    elif player_request == 2:  # Build hotel
-        handle_build_hotel(player)
-    elif player_request == 3:  # Trade
+    elif player_request == 2:  # Trade
         handle_trade(player)
-    elif player_request == 4:  # Sell house
+    elif player_request == 3:  # Sell house
         handle_sell_house(player)
-    elif player_request == 5:  # Sell hotel
-        handle_sell_hotel(player)
-    elif player_request == 6:  # Mortgage
+    elif player_request == 4:  # Mortgage
         handle_mortgage(player)
-    elif player_request == 7:  # Buy property
+    elif player_request == 5:  # Lift mortgage
+        handle_lift_mortgage(player)
+    elif player_request == 6:  # Buy property
         handle_buying_property(player, card)
     else:  # Place bid
         handle_bidding(player, card)
 
 
 def handle_build_house(player):
-    display_player_assets(player)
-    property_to_build = get_asset_from_input(player)
-    while type(property_to_build) is not Property:
-        print("\n***Incorrect type. Can only construct houses on properties only***")
+    try:
+        player.get_assets()["Property"]
+        display_player_assets(player)
         property_to_build = get_asset_from_input(player)
-    if player.own_color_group(property_to_build):
-        if player.check_num_houses(property_to_build):
-            handle_deduct_balance(player, property_to_build.construction_cost)
-            property_to_build.build_house()
+        while type(property_to_build) is not Property:
+            print("\n***Incorrect type. Can only construct houses on properties only***")
+            property_to_build = get_asset_from_input(player)
+        if property_to_build.is_mortgaged():
+            print(f"\n***Cannot build house on mortgaged property***")
         else:
-            print(f"\nUnable to build house. Houses must be built linearly")
-    else:
-        print(
-            f"\nUnable to build house. {player.name} does not own a complete color set of properties")
-
-
-def handle_build_hotel(player):
-    pass
+            if player.own_color_group(property_to_build):
+                if player.check_num_houses(property_to_build):
+                    building_cost = property_to_build.construction_cost
+                    print(
+                        f"\nHouse construction on {property_to_build.name} costs ${building_cost}")
+                    confirmation = get_response()
+                    if confirmation.upper() == "Y":
+                        house_discount_card = player.get_required_card(
+                            "House Discount Card")
+                        if house_discount_card is not None:
+                            print(
+                                f"\n{player} has a House Discount Card. Using it to build house with half its construction price?")
+                            confirmation = get_response()
+                            if confirmation.upper() == "Y":
+                                player.use_card("House Discount Card")
+                                handle_deduct_balance(
+                                    player, building_cost // 2)
+                                property_to_build.build_house()
+                            else:
+                                print(
+                                    f"\n{player} does not want to use House Discount Card")
+                                handle_deduct_balance(player, building_cost)
+                                property_to_build.build_house()
+                        else:
+                            handle_deduct_balance(player, building_cost)
+                            property_to_build.build_house()
+                    else:
+                        print(f"\n{player} cancels building request")
+                else:
+                    print(f"Unable to build house. Houses must be built linearly")
+            else:
+                print(
+                    f"\nUnable to build house. {player} does not own a complete color set of properties")
+    except KeyError:
+        print(f"\n{player} does not have any properties to build houses")
 
 
 def handle_sell_house(player):
-    pass
-
-
-def handle_sell_hotel(player):
-    pass
+    try:
+        player.get_assets()["Property"]
+        display_player_assets(player)
+        property_to_sell = get_asset_from_input(player)
+        while type(property_to_build) is not Property:
+            print("\n***Incorrect type. Can only sell houses on properties only***")
+            property_to_build = get_asset_from_input(player)
+        if property_to_sell.get_num_houses() > 0:
+            sold_value = property_to_sell.construction_cost // 2
+            print(
+                f"\n!!!Sold one house on {property_to_sell.name} for ${sold_value}!!!")
+            confirmation = get_response()
+            if confirmation.upper() == "Y":
+                property_to_sell.sell_house()
+                player.add_balance(sold_value)
+                print(
+                    f"\nSold house successfully. {player} received ${sold_value}")
+                print(property_to_sell)
+            else:
+                print("\nCancel request")
+        else:
+            print(f"\n{property_to_sell.name} does not have any houses to sell!")
+    except KeyError:
+        print(f"\n{player} does not have any properties to sell houses")
 
 
 def handle_bidding(current_player, card):
     other_players = get_other_players(current_player)
-    print(f"\n{current_player.name} wants to buy {card.name} through bidding!")
+    print(f"\n{current_player} wants to buy {card.name} through bidding!")
     print("Each subsequent bid must be $10 greater than the previous bid!")
     print(f"{card.name} will belong to the highest bid or who double {card.name} price first!\n")
     min_bid = card.price // 2
@@ -422,16 +469,16 @@ def handle_bidding(current_player, card):
             index = 0
         player = other_players[index]
         print(f"\nThe current bid for {card.name} is ${current_bid}")
-        print(f"{player.name}, place your bid:")
+        print(f"{player}, place your bid:")
         player_response = get_response()
         if player_response.upper() == "Y":
             current_bid = get_int(current_bid + 10, max_bid, "bidding value")
             highest_bidder = player
             if current_bid == max_bid:
-                print(f"\n{player.name} has doubled {card.name} price!")
+                print(f"\n{player} has doubled {card.name} price!")
                 break
         else:
-            print(f"\n{player.name} quits bidding!")
+            print(f"\n{player} quits bidding!")
             # Remove player who does not participate in bidding
             other_players.pop(index)
             index = index - 1
@@ -463,12 +510,16 @@ def handle_trade(player) -> None:
         if len(other_player.get_assets()) != 0:
             asset_to_trade = get_asset_from_input(other_player)
             if (asset_to_trade is not None):
-                trade_value = get_int(MIN_TRADE, MAX_TRADE, "trade value")
-                trade_asset(player, other_player, asset_to_trade, trade_value)
+                if (asset_to_trade.type == "Property" and asset_to_trade.get_num_houses() > 0):
+                    print(f"\n***Cannot trade properties that have buildings on it***")
+                else:
+                    trade_value = get_int(MIN_TRADE, MAX_TRADE, "trade value")
+                    trade_asset(player, other_player,
+                                asset_to_trade, trade_value)
             else:
-                print(f"\n{player.name} cancels trade")
+                print(f"\n{player} cancels trade")
     else:
-        print(f"\n{player.name} cancels trade")
+        print(f"\n{player} cancels trade")
 
 
 def get_other_players(current_player) -> list:
@@ -503,17 +554,42 @@ def get_asset_from_input(player):
     while asset_category.upper() != "Q":
         try:
             assets = player.get_assets()[asset_category]
-            asset_name = input("Enter asset's name (Q to cancel): ")
-            if asset_name.upper() == "Q":
-                asset_category = "Q"  # Exit while loop
+            if asset_category == "Property":
+                color = input("Enter property's color group (Q to cancel): ")
+                while color.upper() != "Q":
+                    try:
+                        property_list = player.get_assets()[
+                            asset_category][color]
+                        property_name = input(
+                            "Enter property's name (Q to cancel): ")
+                        if property_name.upper() == "Q":
+                            color = "Q"  # Exit
+                            asset_category = "Q"  # Exit
+                        else:
+                            for prop in property_list:
+                                if prop.name == property_name:
+                                    asset = prop
+                                    color = "Q"  # Exit
+                                    asset_category = "Q"  # Exit
+                                    break
+                            if asset is None:
+                                print(f"\n{property_name} does not exist!!!")
+                    except KeyError:
+                        print(f"\n{color} group does not exist!!!")
+                        color = input(
+                            "Enter property's color group (Q to cancel): ")
             else:
-                for player_asset in assets:
-                    if player_asset.name == asset_name:
-                        asset = player_asset
-                        asset_category = "Q"  # Exit while loop
-                        break
-                if asset is None:  # Cannot find asset_name
-                    print(f"\n{asset_name} does not exist")
+                asset_name = input("Enter asset's name (Q to cancel): ")
+                if asset_name.upper() == "Q":
+                    asset_category = "Q"  # Exit while loop
+                else:
+                    for player_asset in assets:
+                        if player_asset.name == asset_name:
+                            asset = player_asset
+                            asset_category = "Q"  # Exit while loop
+                            break
+                    if asset is None:  # Cannot find asset_name
+                        print(f"\n{asset_name} does not exist")
         except KeyError:
             print(f"\n{asset_category} category does not exist")
             asset_category = input("\nEnter asset's type (Q to cancel): ")
@@ -522,21 +598,21 @@ def get_asset_from_input(player):
 
 def trade_asset(current_player, other_player, asset_to_trade, trade_value):
     print(
-        f"\n{current_player.name} wants to trade ${trade_value} for {asset_to_trade.name}")
-    print(f"{other_player.name}", end=", ")
+        f"\n{current_player} wants to trade ${trade_value} for {asset_to_trade.name}")
+    print(f"\n{other_player}", end=", ")
     response = get_response()
     if response.upper() == "Y":
         handle_deduct_balance(current_player, trade_value)
         other_player.sell_assets(asset_to_trade, trade_value)
         current_player.buy_assets(asset_to_trade)
     else:
-        print(f"\n{other_player.name} refuses  to trade.")
+        print(f"\n{other_player} refuses  to trade.")
 
 
 def handle_mortgage(player):
     player_assets = player.get_assets()
     if len(player_assets) == 0:  # Player does not have any asset to mortgage
-        print(f"\n{player.name} does not have any properties to mortgage!")
+        print(f"\n{player} does not have any properties to mortgage!")
     else:
         display_player_assets(player)
         property_to_mortgage = get_asset_from_input(player)
@@ -544,6 +620,34 @@ def handle_mortgage(player):
             print(f"{property_to_mortgage.name} was already mortgaged!\n")
             property_to_mortgage = get_asset_from_input(player)
         if property_to_mortgage is None:  # Player cancels mortgage request
-            print(f"\n{player.name} cancels mortgage request")
+            print(f"\n{player} cancels mortgage request")
+        elif property_to_mortgage.get_num_houses() > 0:
+            print(
+                f"\nAll houses on {property_to_mortgage.name} must be sold prior to mortgage")
         else:  # Property is found and not mortgaged yet
             player.mortgage_property(property_to_mortgage)
+
+
+def handle_lift_mortgage(player):
+    player_assets = player.get_assets()
+    if len(player_assets) == 0:  # Player does not have any asset to lift mortgage
+        print(f"\n{player} does not have any properties!")
+    else:
+        display_player_assets(player)
+        property_to_lift = get_asset_from_input(player)
+        while property_to_lift is not None and not property_to_lift.is_mortgaged():
+            print(f"{property_to_lift.name} was not mortgaged!\n")
+            property_to_lift = get_asset_from_input(player)
+        if property_to_lift is None:  # Player cancels request
+            print(f"\n{player} cancels lifting mortgage request")
+        else:
+            mortgaged_price = property_to_lift.price // 2
+            interest = (mortgaged_price * 10) // 100
+            print(
+                f"\n{player} has to pay mortgaged value ${mortgaged_price} plus interest ${interest} in order to lift")
+            confirmation = get_response()
+            if confirmation.upper() == "Y":
+                handle_deduct_balance(player, mortgaged_price + interest)
+                player.lift_mortgage(property_to_lift)
+            else:
+                print(f"\n{player} cancels lifting mortgage request")

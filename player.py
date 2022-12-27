@@ -18,7 +18,6 @@ class Player:
         self.__in_jail = 0
         self.__bankrupt = False
         self.__assets = dict()
-        self.__property_color_groups = dict()
 
     def __eq__(self, other) -> bool:
         return self.name == other.name
@@ -32,23 +31,55 @@ class Player:
     def get_pos(self):
         return self.__pos
 
-    def get_property_color_groups(self) -> dict:
-        return self.__property_color_groups
+    def add_card(self, card) -> None:
+        # Adding card to player's asset
+        # Does not have card category yet
+        if self.__assets.get(card.type, "None") == "None":
+            cards = list()
+            cards.append(card)
+            self.__assets.update({card.type: cards})
+        else:
+            self.__assets[card.type].append(card)
+        print(f"{self} added {card.name} to current assets!")
+
+    def get_required_card(self, card_name) -> object:
+        # Returns card if player has a card_name
+        try:
+            cards = self.get_assets()["Card"]
+            for card in cards:
+                if card.name == card_name:
+                    return card
+            return None
+        except KeyError:
+            return None
+
+    def use_card(self, card_name) -> bool:
+        # Return true if player can use card_name
+        card = self.get_required_card(card_name)
+        if card is None:
+            print(f"\n***{self} does not have a {card_name}***")
+            return False
+        else:
+            self.__assets["Card"].remove(card)
+            if len(self.__assets["Card"]) == 0:
+                self.__assets.pop("Card")
+            print(f"\n{self} successfully uses {card_name}")
+            return True
 
     def own_color_group(self, asset) -> bool:
         # Returns true if player has all assets in the same color group
-        return self.__property_color_groups[asset.color] == COLOR_GROUPS[asset.color]
+        return len(self.get_assets()[asset.type][asset.color]) == COLOR_GROUPS[asset.color]
 
     def check_num_houses(self, asset) -> bool:
         """ Checking the number of houses of other properties in 
         the same color group as the property param. """
-        property_list = self.get_assets()["Property"]
-        same_color_list = list()
-        for prop in property_list:
-            if prop.color == asset.color:
-                same_color_list.append(prop)
-        for prop in same_color_list:
-            if asset.get_num_houses() - prop.get_num_houses() > 1:
+        other_properties = self.get_assets()[asset.type][asset.color]
+        current_houses = asset.get_num_houses()
+        for prop in other_properties:
+            other_houses = prop.get_num_houses()
+            if current_houses > other_houses:
+                print(
+                    f"\n***Need to construct a house on {prop.name} first***")
                 return False
         return True
 
@@ -81,14 +112,14 @@ class Player:
 
     def roll_dice(self) -> tuple:
         # Roll the dice. Return a tuple of two integers
-        input(f"\n{self.name}, enter to roll dice: ")
+        input(f"\n{self}, enter to roll dice: ")
         first_die = random.randrange(1, 6)
         second_die = random.randrange(1, 6)
         dice = first_die, second_die
         if len(self.last_three_rolls) > 2:
             self.last_three_rolls.pop(0)
         self.last_three_rolls.append(dice)
-        print(f"{self.name} rolls {dice}")
+        print(f"{self} rolls {dice}")
         return dice
 
     def has_rolled_doubles(self, dice):
@@ -102,7 +133,7 @@ class Player:
             if self.has_rolled_doubles(third_to_last) and \
                     self.has_rolled_doubles(second_to_last) and \
                     self.has_rolled_doubles(last):
-                print(f"{self.name} has rolled doubles three times in a row!")
+                print(f"{self} has rolled doubles three times in a row!")
                 return True
         return False
 
@@ -119,44 +150,62 @@ class Player:
         asset_category = asset.type
         existed_asset_category = self.__assets.keys()
         if asset_category in existed_asset_category:
-            self.__assets[asset_category].append(asset)
-        else:
-            asset_list = list()
-            asset_list.append(asset)
-            self.__assets.update({asset_category: asset_list})
-        if asset.type == "Property":
-            existed_color_groups = self.get_property_color_groups().keys()
-            if asset.color in existed_color_groups:
-                previous_color_count = self.__property_color_groups[asset.color]
-                self.__property_color_groups.update(
-                    {asset.color: previous_color_count + 1})
+            if asset_category == "Property":
+                # Color does not exist
+                if self.__assets[asset_category].get(asset.color) is None:
+                    property_list = list()  # Create a new list
+                    property_list.append(asset)
+                    self.__assets[asset_category].update(
+                        {asset.color: property_list})
+                else:  # Color exists
+                    self.__assets[asset_category][asset.color].append(asset)
             else:
-                self.__property_color_groups.update({asset.color: 1})
-            if self.own_color_group(asset):
-                asset.set_same_color_group()
-        print(f"\n{self.name}'s purchasing {asset.name} successfully!")
-        if asset.type != "Card":
-            asset.set_owner(self)
-            print(asset)
+                self.__assets[asset_category].append(asset)
+        else:  # keys do not exist
+            if asset_category == "Property":
+                property_dict = dict()
+                if property_dict.get(asset.color) is None:  # Color does not exist
+                    property_list = list()  # Create a new list
+                    property_list.append(asset)
+                    property_dict.update({asset.color: property_list})
+                else:  # Color exists
+                    property_dict[asset.color].append(asset)
+                self.__assets.update({asset_category: property_dict})
+            else:
+                asset_list = list()
+                asset_list.append(asset)
+                self.__assets.update({asset_category: asset_list})
+        print(f"\n{self}'s purchasing {asset.name} successfully!")
+        asset.set_owner(self)
+        print(asset)
 
     def sell_assets(self, asset, amount):
         self.add_balance(amount)
         asset.set_owner(None)
         assets = self.__assets[asset.type]
-        assets.remove(asset)
+        if asset.type == "Property":
+            assets[asset.color].remove(asset)
+            if len(assets[asset.color]) == 0:
+                assets.pop(asset.color)
+        else:
+            assets.remove(asset)
         if len(assets) == 0:
             self.__assets.pop(asset.type)
-        print(f"\n{self.name} sold {asset.name} for ${amount}")
+        print(f"\n{self} sold {asset.name} for ${amount}")
 
     def make_payment(self, to_whom, amount, reason):
         if type(to_whom) is Player:
             to_whom.add_balance(amount)
-        print(f"\n{self.name} paid ${amount} to {to_whom.name} for {reason}!")
+        print(f"\n{self} paid ${amount} to {to_whom.name} for {reason}!")
 
     def mortgage_property(self, mortgaged_property):
         mortgaged_property.set_mortgaged()
         mortgaged_property_value = mortgaged_property.price // 2
         self.add_balance(mortgaged_property_value)
-        print(f"nSucessfully mortgaged {mortgaged_property.name}")
+        print(f"\nSucessfully mortgaged {mortgaged_property.name}")
         print(
-            f"{self.name} received ${mortgaged_property_value} from mortgage {mortgaged_property.name}")
+            f"{self} received ${mortgaged_property_value} from mortgage {mortgaged_property.name}")
+
+    def lift_mortgage(self, property_to_lift):
+        property_to_lift.lift_mortgage()
+        print(f"\nSucessfully lifting mortgage of {property_to_lift.name}")
