@@ -381,7 +381,7 @@ def handle_player_request(player, player_request) -> None:
 def handle_build_house(player):
     try:
         player.get_assets()["Property"]
-        display_player_assets(player)
+        display_player_properties(player)
         property_to_build = get_asset_from_input(player)
         while type(property_to_build) is not Property:
             print("\n***Incorrect type. Can only construct houses on properties only***")
@@ -429,9 +429,9 @@ def handle_build_house(player):
 def handle_sell_house(player):
     try:
         player.get_assets()["Property"]
-        display_player_assets(player)
+        display_player_properties(player)
         property_to_sell = get_asset_from_input(player)
-        while type(property_to_build) is not Property:
+        while type(property_to_sell) is not Property:
             print("\n***Incorrect type. Can only sell houses on properties only***")
             property_to_build = get_asset_from_input(player)
         if property_to_sell.get_num_houses() > 0:
@@ -616,16 +616,22 @@ def handle_mortgage(player):
     else:
         display_player_assets(player)
         property_to_mortgage = get_asset_from_input(player)
-        while property_to_mortgage is not None and property_to_mortgage.is_mortgaged():  # Property already mortgaged
-            print(f"{property_to_mortgage.name} was already mortgaged!\n")
-            property_to_mortgage = get_asset_from_input(player)
-        if property_to_mortgage is None:  # Player cancels mortgage request
-            print(f"\n{player} cancels mortgage request")
-        elif property_to_mortgage.get_num_houses() > 0:
-            print(
-                f"\nAll houses on {property_to_mortgage.name} must be sold prior to mortgage")
-        else:  # Property is found and not mortgaged yet
-            player.mortgage_property(property_to_mortgage)
+        if property_to_mortgage.type == "Card":
+            print("\n***Error. Cannot mortgage cards***")
+        else:
+            while property_to_mortgage is not None and property_to_mortgage.is_mortgaged():  # Property already mortgaged
+                if property_to_mortgage.type == "Card":
+                    print("\n***Error. Cannot mortgage cards***")
+                    return
+                print(f"{property_to_mortgage.name} was already mortgaged!\n")
+                property_to_mortgage = get_asset_from_input(player)
+            if property_to_mortgage is None:  # Player cancels mortgage request
+                print(f"\n{player} cancels mortgage request")
+            elif property_to_mortgage.type == "Property" and property_to_mortgage.get_num_houses() > 0:
+                print(
+                    f"\nAll houses on {property_to_mortgage.name} must be sold prior to mortgage")
+            else:  # Property is found and not mortgaged yet
+                player.mortgage_property(property_to_mortgage)
 
 
 def handle_lift_mortgage(player):
@@ -635,7 +641,13 @@ def handle_lift_mortgage(player):
     else:
         display_player_assets(player)
         property_to_lift = get_asset_from_input(player)
+        if property_to_lift.type == "Card":
+            print("\n***Error. Cannot mortgage cards***")
+            return
         while property_to_lift is not None and not property_to_lift.is_mortgaged():
+            if property_to_lift.type == "Card":
+                print("\n***Error. Cannot mortgage cards***")
+                return
             print(f"{property_to_lift.name} was not mortgaged!\n")
             property_to_lift = get_asset_from_input(player)
         if property_to_lift is None:  # Player cancels request

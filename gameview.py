@@ -106,6 +106,18 @@ def display_player_assets(player) -> None:
                 print("")
 
 
+def display_player_properties(player) -> None:
+    try:
+        property_dict = player.get_assets()["Property"]
+        for color, properties in property_dict.items():
+            print(f"{color}: ", end="")
+            for prop in properties:
+                print(f"[{prop.name}, {prop.get_num_houses()}]", end=" ")
+                print("")
+    except KeyError:
+        print(f"{player} does not have any properties")
+
+
 def display_quit_message(player) -> None:
     print("*" * LINE_LEN)
     print(f"\n{player} has declared bankruptcy")
