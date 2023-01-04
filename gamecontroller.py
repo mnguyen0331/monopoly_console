@@ -290,6 +290,9 @@ def handle_player_pos(player, dice) -> None:
                     player.use_card("Rent Waiver Card")
                 else:
                     print(f"\n{player} does not want to use Rent Waiver Card")
+                    handle_deduct_balance(player, card.get_rent())
+                    player.make_payment(
+                        property_owner, card.get_rent(), "rent")
             else:
                 handle_deduct_balance(player, card.get_rent())
                 player.make_payment(property_owner, card.get_rent(), "rent")
@@ -378,14 +381,27 @@ def handle_player_request(player, player_request) -> None:
         handle_bidding(player, card)
 
 
+def get_property_from_input(property_dict):
+    color_group = input("\nEnter color's group: ")
+    while color_group not in property_dict.keys():
+        print(f"\n{color_group} does not exist!")
+        color_group = input("\nEnter color's group: ")
+    property_name = input("Enter property's name: ")
+    properties = [prop for prop in property_dict[color_group]
+                  if prop.name == property_name]
+    while len(properties) == 0:  # property_name does not exist
+        print(f"\n{property_name} does not exist!")
+        property_name = input("Enter property's name: ")
+        properties = [prop for prop in property_dict[color_group]
+                      if prop.name == property_name]
+    return properties[0]
+
+
 def handle_build_house(player):
     try:
-        player.get_assets()["Property"]
+        property_dict = player.get_assets()["Property"]
         display_player_properties(player)
-        property_to_build = get_asset_from_input(player)
-        while type(property_to_build) is not Property:
-            print("\n***Incorrect type. Can only construct houses on properties only***")
-            property_to_build = get_asset_from_input(player)
+        property_to_build = get_property_from_input(property_dict)
         if property_to_build.is_mortgaged():
             print(f"\n***Cannot build house on mortgaged property***")
         else:
@@ -428,12 +444,9 @@ def handle_build_house(player):
 
 def handle_sell_house(player):
     try:
-        player.get_assets()["Property"]
+        property_dict = player.get_assets()["Property"]
         display_player_properties(player)
-        property_to_sell = get_asset_from_input(player)
-        while type(property_to_sell) is not Property:
-            print("\n***Incorrect type. Can only sell houses on properties only***")
-            property_to_build = get_asset_from_input(player)
+        property_to_sell = get_property_from_input(property_dict)
         if property_to_sell.get_num_houses() > 0:
             sold_value = property_to_sell.construction_cost // 2
             print(
@@ -491,12 +504,23 @@ def handle_bidding(current_player, card):
 
 def handle_buying_property(player, landed_property) -> None:
     print(landed_property)
-    response = get_response()
-    if response.upper() == "Y":
-        handle_deduct_balance(player, landed_property.price)
-        player.buy_assets(landed_property)
+    if player.get_balance() < landed_property.price:
+        print(
+            f"\n{player}'s current balance cannot cover {landed_property.name}'s price")
+        print("Do you want to buy property thru bidding?")
+        response = get_response()
+        if response.upper() == "Y":
+            handle_bidding(player, landed_property)
+        else:
+            handle_deduct_balance(player, landed_property.price)
+            player.buy_assets(landed_property)
     else:
-        print("Cancel request")
+        response = get_response()
+        if response.upper() == "Y":
+            handle_deduct_balance(player, landed_property.price)
+            player.buy_assets(landed_property)
+        else:
+            print("Cancel request")
 
 
 def handle_trade(player) -> None:

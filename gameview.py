@@ -112,8 +112,9 @@ def display_player_properties(player) -> None:
         for color, properties in property_dict.items():
             print(f"{color}: ", end="")
             for prop in properties:
-                print(f"[{prop.name}, {prop.get_num_houses()}]", end=" ")
-                print("")
+                print(
+                    f"[Name: {prop.name}, Houses: {prop.get_num_houses()}]", end=" ")
+            print("")
     except KeyError:
         print(f"{player} does not have any properties")
 
